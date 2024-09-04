@@ -2,6 +2,7 @@ package com.rest.WebServices.User;
 
 import java.net.URI;
 import java.util.List;
+import java.util.Optional;
 
 import org.springframework.http.ResponseEntity;
 import org.springframework.http.ResponseEntity.BodyBuilder;
@@ -13,39 +14,49 @@ import org.springframework.web.bind.annotation.RequestBody;
 import org.springframework.web.bind.annotation.RestController;
 import org.springframework.web.servlet.support.ServletUriComponentsBuilder;
 
+import com.rest.WebServices.User.JPA.UserRepository;
+
 import jakarta.validation.Valid;
 
 @RestController
-public class UserResource {
-
+public class UserJPAResource {
+	
 	private UserDaoService service;
 	
-	public UserResource(UserDaoService service) {
+	private UserRepository repository;
+	
+	public UserJPAResource(UserDaoService service,UserRepository repository) {
 		this.service = service;
+		this.repository = repository;
 	}
 	
-	@GetMapping("/users")
+	@GetMapping("/jpa/users")
 	public List<User> retrieveAllUsers(){
-		return service.findAll();
+		return repository.findAll();
 	}
 	
-	@GetMapping("/users/{id}")
-	public User retrieveUser(@PathVariable int id){
+	@GetMapping("/jpa/users/{id}")
+	public EntityModel<User> retrieveUser(@PathVariable int id){
 		
-		User user =  service.findOne(id);
+		Optional<User> user =  repository.findById(id);
 		
-		if(user == null)
+		if(user.isEmpty())
 			throw new UserNotFoundException("id" + id);
-		return user;
+		EntityModel<User> entityModel = EntityModel.of(user.get());
+		
+		WebMvcLinkBuilder link = linkTo(methodOn(this.getClass()).retrieveAllUsers());
+		entityModel.add(link.withRel("all-users"));
+		
+		return entityModel;
 	}
 	
-	@DeleteMapping("/users/{id}")
+	@DeleteMapping("/jpa/users/{id}")
 	public void deleteUser(@PathVariable int id){
 	  service.deleteById(id);
 		
 	}
 	
-	@PostMapping("/users")
+	@PostMapping("/jpa/users")
 	public ResponseEntity<User> createUser(@Valid @RequestBody User user){
 		 User savedUser = service.save(user);
 		 URI location = ServletUriComponentsBuilder.fromCurrentRequest()
